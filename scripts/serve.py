@@ -25,7 +25,7 @@ def handle_request(session, request, raw_image=None):
             # If this is a Pickle request, the image is already inside the object
             image = raw_image if raw_image is not None else request.get("image")
             result = session.predict(image)
-            return {"status": "ok", "pred": result}
+            return {"status": "ok", "pred": result, "repeat": session.action_downsample_ratio}
         return {"status": "error", "message": "Unknown type"}
 
 
