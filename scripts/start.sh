@@ -32,12 +32,7 @@ if [ $# -eq 0 ]; then
     echo "Starting server with default configuration..."
     exec python scripts/serve.py "$MODEL_FILE"
 else
-    # If arguments are provided, user might have wanted to specify flags.
-    # However, serve.py requires 'ckpt' as the first positional argument.
-    # We should assume the user passes flags, and we prepend the model file?
-    # Or we assume the user overrides everything?
-    # The requirement is "Server ... should download ... and save ...".
-    # It implies the container manages the model path.
+    # If arguments are provided, pass them to serve.py along with the model file.
     
     echo "Starting server with arguments: $@"
     exec python scripts/serve.py "$MODEL_FILE" "$@"
