@@ -1,8 +1,15 @@
 # NitroGen Server
 
+[![Python application](https://github.com/artryazanov/NitroGen-Server/actions/workflows/python-app.yml/badge.svg)](https://github.com/artryazanov/NitroGen-Server/actions/workflows/python-app.yml)
+[![License: NVIDIA](https://img.shields.io/badge/License-NVIDIA-green.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
+
 NitroGen Server is a specialized inference server for the **NitroGen** foundation model (originally by MineDojo). It provides a high-performance backend for generalist gaming agents, allowing them to play games by processing visual input and generating controller commands.
 
 This project dockerizes the original NitroGen implementation and extends it with a **dual-protocol architecture**, enabling connections from both Python-based clients and external tools like **BizHawk (Lua)**.
+
+> [!IMPORTANT]
+> **License & Usage Restrictions**: This project is based on NVIDIA's Work and is licensed under the NVIDIA License. It is strictly for non-commercial research purposes only. Use for military, surveillance, nuclear technology, or biometric processing is expressly prohibited.
 
 ## ✨ Features
 
@@ -102,6 +109,7 @@ python scripts/serve.py models/nvidia/NitroGen/ng.pt
     *   `serve.py`: The main server entry point.
     *   `play.py`: Client script for running agents.
 *   `models/`: Directory for storing downloaded model weights (gitignored).
+*   `tests/`: Unit and integration tests.
 *   `Dockerfile`: Definition for the server container.
 
 ## 🔗 Credits
