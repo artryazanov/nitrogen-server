@@ -1,0 +1,18 @@
+services:
+  nitrogen-server:
+    build: .
+    ports:
+      - "5555:5555"
+    volumes:
+      # Map the local models directory to the container's model directory
+      # This ensures the downloaded model persists and is accessible externally
+      - ./models/nvidia/NitroGen:/app/models/nvidia/NitroGen
+    environment:
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]

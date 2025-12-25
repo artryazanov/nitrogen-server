@@ -19,9 +19,9 @@ dependencies = [
     "torch",
     "pyyaml",
     "einops",
-    "transformers",
+    "transformers>=4.40.0",
     "pydantic",
-    "diffusers",
+    "diffusers>=0.27.0",
     "polars",
     
     # Play (Windows-only deps marked)

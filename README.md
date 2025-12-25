@@ -1,66 +1,70 @@
-<img src="assets/github_banner.gif" width="100%" />
+# NitroGen Server
 
-<div align="center">
-  <p style="font-size: 1.2em;">
-    <a href="https://nitrogen.minedojo.org/"><strong>Website</strong></a> | 
-    <a href="https://huggingface.co/nvidia/NitroGen"><strong>Model</strong></a> |
-    <a href="https://huggingface.co/datasets/nvidia/NitroGen"><strong>Dataset</strong></a> |
-    <a href="https://nitrogen.minedojo.org/assets/documents/nitrogen.pdf"><strong>Paper</strong></a>
-  </p>
-</div>
+NitroGen is an open foundation model for generalist gaming agents. This repository hosts the inference server which can be easily deployed using Docker.
 
+For the original documentation, including manual installation steps and details on the client-side game agent, please refer to [README_ORIGINAL.md](README_ORIGINAL.md) or the [original repository](https://github.com/MineDojo/NitroGen).
 
-# NitroGen
+## Features
 
-NitroGen is an open foundation model for generalist gaming agents. This multi-game model takes pixel input and predicts gamepad actions.
-
-NitroGen is trained through behavior cloning on the largest video-action gameplay dataset, assembled exclusively from internet videos. It can be adapted via post-training to unseen games.
-
-# Installation
+- **Dockerized Server**: Easy deployment with Docker and Docker Compose.
+- **Auto-Model Download**: The server automatically downloads the `nvidia/NitroGen` model if it's missing.
+- **Persistent Storage**: Models are saved to a local volume to avoid re-downloading.
+- **GPU Support**: Configured for NVIDIA GPUs out of the box.
 
 ## Prerequisites
 
-We **do not distribute game environments**, you must use your own copies of the games. This repository only supports running the agent on **Windows games**. You can serve the model from a Linux machine for inference, but the game ultimately has to run on Windows. We have tested on Windows 11 with Python ≥ 3.12.
+- **Docker** and **Docker Compose**
+- **NVIDIA Container Toolkit**: Required for GPU access inside the container. [Installation Guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
 
-## Setup
+## Quick Start
 
-Install this repo:
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/artryazanov/NitroGen-Server.git
+   cd NitroGen-Server
+   ```
+
+2. **Start the server:**
+   ```bash
+   docker-compose up --build
+   ```
+
+   - On the first run, the container will download the model (`ng.pt`) to `models/nvidia/NitroGen/`. This may take some time depending on your internet connection.
+   - Subsequent runs will use the cached model.
+   - The server listens on port **5555**.
+
+3. **Check Status:**
+   You should see output indicating the server is running:
+   ```
+   Server running on port 5555
+   Waiting for requests...
+   ```
+
+## Configuration
+
+### Volumes
+The `docker-compose.yml` mounts a local directory for model persistence:
+- **Local:** `./models/nvidia/NitroGen`
+- **Container:** `/app/models/nvidia/NitroGen`
+
+This ensures that the large model checkpoint is stored on your host machine and persists across container restarts.
+
+### Ports
+- **5555**: The ZeroMQ server port. You can change this in `docker-compose.yml` if needed.
+
+## Connecting a Client
+
+Once the server is running (usually on a Linux machine with a powerful GPU), you can connect to it from your Windows gaming machine using `scripts/play.py`.
+
+Ensure your client machine can reach the server's IP address on port 5555.
+
 ```bash
-git clone https://github.com/MineDojo/NitroGen.git
-cd NitroGen
-pip install -e .
+# On your Windows machine (Client)
+python scripts/play.py --process '<game_executable_name>.exe' --ip <SERVER_IP> --port 5555
 ```
 
-Download NitroGen checkpoint from [HuggingFace](https://huggingface.co/nvidia/NitroGen):
-```bash
-hf download nvidia/NitroGen ng.pt
-```
+*(Note: You might need to modify `play.py` to accept IP/Port arguments if it hardcodes localhost, or use SSH tunneling).*
 
-# Getting Started
+## Credits & Acknowledgements
 
-First, start an inference server for the model:
-```bash
-python scripts/serve.py <path_to_ng.pt>  
-```
-
-Then, run the agent on the game of your choice:
-```bash
-python scripts/play.py --process '<game_executable_name>.exe'
-```
-
-The `--process` parameter must be the exact executable name of the game you want to play. You can find it by right-clicking on the game process in Windows Task Manager (Ctrl+Shift+Esc), and selecting `Properties`. The process name should be in the `General` tab and end with `.exe`.
-
-<!-- TODO # Paper and Citation
-
-If you find our work useful, please consider citing us!
-
-```bibtex
-@article{,
-  title   = {},
-  author  = {},
-  year    = {},
-  journal = {}
-}
-``` -->
-
-**Disclaimer**: This project is strictly for research purposes and is not an official NVIDIA product.
+This project is a fork of [NitroGen](https://github.com/MineDojo/NitroGen) by MineDojo. I extend my sincere gratitude to the original authors for their groundbreaking work in creating an open foundation model for generalist gaming agents.
