@@ -78,7 +78,7 @@ For emulators like BizHawk, use the TCP protocol on port **5556**.
 We provide a ready-to-use client script: [`scripts/bizhawk_ai_agent.lua`](scripts/bizhawk_ai_agent.lua).
 
 #### Setup
-1.  **Configuration**: Open `scripts/bizhawk_ai_agent.lua` and adjust the button mapping in `apply_controls` to match your specific console/game.
+1.  **Configuration**: Open `scripts/bizhawk_ai_agent.lua` and set `CONSOLE_TYPE` to `"SNES"` or `"NES"`. The script includes predefined button mappings for these consoles.
 2.  **Run**: In BizHawk, go to **Tools -> Lua Console -> Script -> Open Script** and select `scripts/bizhawk_ai_agent.lua`.
 
 #### Protocol Details
@@ -124,7 +124,9 @@ python scripts/serve.py models/nvidia/NitroGen/ng.pt
 *   `nitrogen/`: Core library code (model definition, inference logic).
 *   `scripts/`: Executable scripts.
     *   `serve.py`: The main server entry point.
-    *   `play.py`: Client script for running agents.
+    *   `play.py`: Python client script for running agents.
+    *   `bizhawk_ai_agent.lua`: Lua client script for BizHawk emulator.
+    *   `start.sh`: Entrypoint script for Docker.
 *   `models/`: Directory for storing downloaded model weights (gitignored).
 *   `tests/`: Unit and integration tests.
 *   `Dockerfile`: Definition for the server container.
