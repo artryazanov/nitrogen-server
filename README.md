@@ -1,6 +1,6 @@
 # NitroGen Server
 
-[![Python application](https://github.com/artryazanov/NitroGen-Server/actions/workflows/python-app.yml/badge.svg)](https://github.com/artryazanov/NitroGen-Server/actions/workflows/python-app.yml)
+[![Python application](https://github.com/artryazanov/nitrogen-server/actions/workflows/python-app.yml/badge.svg)](https://github.com/artryazanov/nitrogen-server/actions/workflows/python-app.yml)
 [![License: NVIDIA](https://img.shields.io/badge/License-NVIDIA-green.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
 
@@ -33,10 +33,10 @@ This is the recommended way to run the server.
 *   [Docker](https://docs.docker.com/engine/install/) & Docker Compose
 *   [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) (required for GPU access)
 
-### 1. Clone & Rename
+### 1. Clone Repository
 ```bash
-git clone https://github.com/artryazanov/NitroGen-Server.git
-cd NitroGen-Server
+git clone https://github.com/artryazanov/nitrogen-server.git
+cd nitrogen-server
 ```
 
 ### 2. Start the Server
