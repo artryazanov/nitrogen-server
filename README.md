@@ -75,7 +75,7 @@ python scripts/play.py --process "celeste.exe" --ip <SERVER_IP> --port 5555
 ### BizHawk (Lua) Integration
 For emulators like BizHawk, use the TCP protocol on port **5556**.
 
-The client script is available in a separate repository: [NitroGen BizHawk AI Agent](https://github.com/artryazanov/nitrogen-bizhawk-ai-agent).
+We provide a ready-to-use client script in a separate repository: [NitroGen BizHawk AI Agent](https://github.com/artryazanov/nitrogen-bizhawk-ai-agent).
 
 You can download the script directly here: [`bizhawk_ai_agent.lua`](https://github.com/artryazanov/nitrogen-bizhawk-ai-agent/blob/main/bizhawk_ai_agent.lua).
 
