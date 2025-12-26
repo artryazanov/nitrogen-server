@@ -109,6 +109,30 @@ Steps:
 
 ---
 
+## 🐞 Debugging Mode
+
+You can enable debug mode to save detailed artifacts for every request (received image, JSON parameters, processed image, model response).
+
+**Enable via CLI (Manual):**
+```bash
+python scripts/serve.py models/nvidia/NitroGen/ng.pt --debug --debug-dir debug_output
+```
+
+**Enable via Docker:**
+To run with debug mode in Docker, use `docker-compose run` to pass the flag and map the ports:
+```bash
+docker-compose run --service-ports nitrogen-server --debug
+```
+*Note: This will output artifacts to the `debug/` folder on your host machine (mapped in docker-compose.yml).*
+
+**Artifacts generated:**
+1. `*_1_received.png`: The original image received from the client.
+2. `*_2_params.json`: The JSON parameters of the request.
+3. `*_3_processed.png`: The preprocessed image (resized/padded) sent to the model.
+4. `*_4_response.json`: The model's prediction response.
+
+---
+
 ## 🛠 Manual Installation (Development)
 
 If you prefer to run the server without Docker (e.g., for development):
@@ -123,7 +147,7 @@ pip install "huggingface_hub[cli]"
 huggingface-cli download nvidia/NitroGen ng.pt --local-dir models/nvidia/NitroGen
 
 # 3. Run Server
-python scripts/serve.py models/nvidia/NitroGen/ng.pt
+python scripts/serve.py models/nvidia/NitroGen/ng.pt [--debug]
 ```
 
 ## 📂 Project Structure

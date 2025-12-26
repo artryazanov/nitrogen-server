@@ -1,4 +1,6 @@
 import zmq
+import datetime
+import os
 import time
 import argparse
 import pickle
@@ -67,7 +69,7 @@ def preprocess_image(img, mode="pad"):
         return cv2.resize(img, target_size, interpolation=cv2.INTER_AREA)
     return img
 
-def handle_request(session, request, raw_image=None):
+def handle_request(session, request, raw_image=None, debug_mode=False, debug_dir="debug", original_image=None):
     """Universal request handler for ZeroMQ+Pickle and TCP+JSON+RawBytes protocols."""
     with session_lock:
         if request["type"] == "reset":
@@ -78,7 +80,54 @@ def handle_request(session, request, raw_image=None):
         elif request["type"] == "predict":
             # If this is a Pickle request, the image is already inside the object
             image = raw_image if raw_image is not None else request.get("image")
+            
+            # Save debug artifacts if enabled
+            if debug_mode:
+                try:
+                    os.makedirs(debug_dir, exist_ok=True)
+                    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                    prefix = f"{timestamp}"
+                    
+                    # 1. Received Image (Original)
+                    if original_image is not None:
+                        # Convert RGB back to BGR for cv2.imwrite
+                        cv2.imwrite(os.path.join(debug_dir, f"{prefix}_1_received.png"), cv2.cvtColor(original_image, cv2.COLOR_RGB2BGR))
+                    elif image is not None:
+                         # Fallback if original not provided separately
+                         cv2.imwrite(os.path.join(debug_dir, f"{prefix}_1_received.png"), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+
+                    # 2. JSON Parameters
+                    with open(os.path.join(debug_dir, f"{prefix}_2_params.json"), "w") as f:
+                        # Filter out large data if strictly needed, but request usually just has metadata + array
+                        # We should be careful not to dump huge arrays in text. 
+                        # The 'request' dict might contain the image if it's ZMQ pickle.
+                        # Create a safe copy for logging
+                        log_req = {k: v for k, v in request.items() if k != "image"}
+                        json.dump(log_req, f, indent=4)
+                    
+                    # 3. Image sent to model (Processed)
+                    if image is not None:
+                         cv2.imwrite(os.path.join(debug_dir, f"{prefix}_3_processed.png"), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+
+                except Exception as e:
+                    print(f"Debug logging error: {e}")
+
             result = session.predict(image)
+
+            if debug_mode:
+                try:
+                     # 4. Model Response
+                    with open(os.path.join(debug_dir, f"{prefix}_4_response.json"), "w") as f:
+                        # Convert numpy types to native types for JSON serialization
+                        def default_converter(o):
+                            if isinstance(o, np.integer): return int(o)
+                            if isinstance(o, np.floating): return float(o)
+                            if isinstance(o, np.ndarray): return o.tolist()
+                            raise TypeError
+                        json.dump(result, f, indent=4, default=default_converter)
+                except Exception as e:
+                    print(f"Debug logging response error: {e}")
+
             return {"status": "ok", "pred": result, "repeat": session.action_downsample_ratio}
         return {"status": "error", "message": "Unknown type"}
 
@@ -107,16 +156,18 @@ def read_image_from_conn(conn, expected_size=None, resize_mode='pad'):
                      # OpenCV loads as BGR. 
                      # We need RGB.
                      img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                     original_img = img.copy()
                      img = preprocess_image(img, resize_mode)
-                     return img
+                     return img, original_img
              except Exception:
                  pass
                  
              # Fallback: Assume Raw RGB 256x256x3
              expected_raw = 256 * 256 * 3
              if len(raw_data) == expected_raw:
-                  return np.frombuffer(raw_data, dtype=np.uint8).reshape(256, 256, 3).copy()
-        return None
+                  img = np.frombuffer(raw_data, dtype=np.uint8).reshape(256, 256, 3).copy()
+                  return img, img.copy()
+        return None, None
 
     # 1. Peek/Read first 2 bytes to check for BMP signature 'BM'
     sig = b""
@@ -194,11 +245,12 @@ def read_image_from_conn(conn, expected_size=None, resize_mode='pad'):
                     img = cv2.flip(img, 0)
                 
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                original_img = img.copy()
                 
                 if actual_width != 256 or actual_height != 256:
                     img = preprocess_image(img, resize_mode)
                     
-                return img
+                return img, original_img
         except struct.error:
             # Fallback to Raw if parsing fails? Unlikely if we got bytes.
             pass
@@ -212,7 +264,7 @@ def read_image_from_conn(conn, expected_size=None, resize_mode='pad'):
     if is_bmp:
         # If we failed BMP parsing but determined it was BMP, return None. 
         # (Mixed logic: 'BM' is strong indicator. If header is partial, connection is bad).
-        return None
+        return None, None
 
     # Raw expected size: 256x256x3 = 196608
     expected_bytes = 256 * 256 * 3
@@ -226,11 +278,12 @@ def read_image_from_conn(conn, expected_size=None, resize_mode='pad'):
         
     if len(raw_data) == expected_bytes:
         # Assume Raw is already RGB and correctly oriented (256x256)
-        return np.frombuffer(raw_data, dtype=np.uint8).reshape(256, 256, 3).copy()
+        img = np.frombuffer(raw_data, dtype=np.uint8).reshape(256, 256, 3).copy()
+        return img, img.copy()
         
-    return None
+    return None, None
 
-def run_zmq_server(session, port):
+def run_zmq_server(session, port, debug_mode=False, debug_dir="debug"):
     """Runs the ZeroMQ server (original protocol)."""
     context = zmq.Context()
     socket_zmq = context.socket(zmq.REP)
@@ -241,12 +294,22 @@ def run_zmq_server(session, port):
         try:
             msg = socket_zmq.recv()
             req = pickle.loads(msg)
-            res = handle_request(session, req)
+            # For ZMQ, we don't distinguish original vs processed in quite the same way yet
+            # as it's often sent pre-processed or we treat it as is.
+            res = handle_request(session, req, debug_mode=debug_mode, debug_dir=debug_dir) 
+            # Note: We didn't pipe flags to run_zmq_server yet or update its signature, 
+            # but user request emphasizes "received image" which implies the TCP/file path mostly.
+            # However, ZMQ is also a "request".
+            # Currently handle_request defaults debug=False, so ZMQ won't debug unless we update this.
+            # But the main usage seems to be the TCP text/json protocol for now.
+            # Let's leave ZMQ without debug args for now unless required, or use global args if we pass them.
+            # BETTER: Update run_zmq_server signature to take debug args.
+            
             socket_zmq.send(pickle.dumps(res))
         except Exception as e:
             print(f"ZMQ Error: {e}")
 
-def run_tcp_server(session, port):
+def run_tcp_server(session, port, debug_mode=False, debug_dir="debug"):
     """Runs the simple TCP server (for BizHawk/Lua)."""
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
@@ -284,16 +347,18 @@ def run_tcp_server(session, port):
                     break
 
                 img = None
+                original_img = None
+                
                 if req.get("type") == "predict":
                     expected_len = req.get("len")
                     resize_mode = req.get("resize_mode", "pad")
-                    img = read_image_from_conn(conn, expected_size=expected_len, resize_mode=resize_mode)
+                    img, original_img = read_image_from_conn(conn, expected_size=expected_len, resize_mode=resize_mode)
                     if img is None:
                         print("Incomplete or invalid image data received")
                         break
 
                 # 3. Process and send JSON response
-                res = handle_request(session, req, raw_image=img)
+                res = handle_request(session, req, raw_image=img, debug_mode=debug_mode, debug_dir=debug_dir, original_image=original_img)
                 
                 # Convert numpy to lists for JSON
                 if "pred" in res:
@@ -313,18 +378,20 @@ if __name__ == "__main__":
     parser.add_argument("ckpt", type=str)
     parser.add_argument("--zmq-port", type=int, default=5555, help="Port for ZeroMQ server")
     parser.add_argument("--tcp-port", type=int, default=5556, help="Port for Simple TCP server")
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode to save images and jsons")
+    parser.add_argument("--debug-dir", type=str, default="debug", help="Directory to save debug files")
     
     args = parser.parse_args()
 
     session = InferenceSession.from_ckpt(args.ckpt)
 
     # Start TCP server in a daemon thread
-    tcp_thread = threading.Thread(target=run_tcp_server, args=(session, args.tcp_port), daemon=True)
+    tcp_thread = threading.Thread(target=run_tcp_server, args=(session, args.tcp_port, args.debug, args.debug_dir), daemon=True)
     tcp_thread.start()
     time.sleep(0.5)
 
     # Run ZMQ server in the main thread
     try:
-        run_zmq_server(session, args.zmq_port)
+        run_zmq_server(session, args.zmq_port, debug_mode=args.debug, debug_dir=args.debug_dir)
     except KeyboardInterrupt:
         print("\nShutting down server...")

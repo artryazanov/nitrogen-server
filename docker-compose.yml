@@ -8,6 +8,11 @@ services:
       # Map the local models directory to the container's model directory
       # This ensures the downloaded model persists and is accessible externally
       - ./models/nvidia/NitroGen:/app/models/nvidia/NitroGen
+      # Map source code for hot-reloading/development
+      - ./nitrogen:/app/nitrogen
+      - ./scripts:/app/scripts
+      # Map debug directory to view artifacts on host
+      - ./debug:/app/debug
     environment:
       - PYTHONUNBUFFERED=1
     deploy:
