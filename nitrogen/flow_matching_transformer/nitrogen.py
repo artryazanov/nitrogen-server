@@ -56,6 +56,12 @@ class NitroGen_Config(BaseModel):
             config_dict = yaml.safe_load(f)
         return cls.model_validate(config_dict)
 
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
+    def to_dict(self):
+        return self.model_dump()
+
 def swish(x):
     return x * torch.sigmoid(x)
 

@@ -10,6 +10,8 @@ from nitrogen.flow_matching_transformer.nitrogen import NitroGen, NitroGen_Confi
 from nitrogen.mm_tokenizers import NitrogenTokenizerConfig, NitrogenTokenizer, Tokenizer
 from nitrogen.cfg import CkptConfig
 from nitrogen.shared import PATH_REPO
+from peft import PeftModel
+from pathlib import Path
 
 def summarize_parameters(module, name='model', depth=0, max_depth=3):
     """
@@ -38,8 +40,8 @@ def summarize_parameters(module, name='model', depth=0, max_depth=3):
             summarize_parameters(child_module, child_name, depth + 1, max_depth)
 
 
-def load_model(checkpoint_path: str):
-    """Load model and args from checkpoint."""
+def _load_monolithic_checkpoint(checkpoint_path: str):
+    """Load model and args from a monolithic checkpoint (.pt)."""
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     ckpt_config = CkptConfig.model_validate(checkpoint["ckpt_config"])
     model_cfg = ckpt_config.model_cfg
@@ -79,6 +81,41 @@ def load_model(checkpoint_path: str):
     model.to("cuda", dtype=torch.bfloat16)
 
     return model, tokenizer, img_proc, ckpt_config, game_mapping, action_downsample_ratio
+
+def load_model(checkpoint_path: str, base_model_path: str = None):
+    """
+    Load model from checkpoint (monolithic or LoRA).
+    
+    If checkpoint_path is a LoRA adapter (directory with adapter_config.json),
+    it requires base_model_path to be provided to load the base weights first.
+    """
+    path = Path(checkpoint_path)
+    
+    # Check if it's a LoRA adapter
+    is_lora = False
+    if path.is_dir() and (path / "adapter_config.json").exists():
+        is_lora = True
+        
+    if is_lora:
+        if base_model_path is None:
+            raise ValueError(f"Checkpoint {checkpoint_path} is a LoRA adapter but no --base-model provided.")
+            
+        print(f"Loading base model from {base_model_path}...")
+        model, tokenizer, img_proc, ckpt_config, game_mapping, action_downsample_ratio = _load_monolithic_checkpoint(base_model_path)
+        
+        print(f"Loading LoRA adapter from {checkpoint_path}...")
+        model = PeftModel.from_pretrained(model, checkpoint_path)
+        print("Merging LoRA weights into base model...")
+        model = model.merge_and_unload()
+        
+        # Ensure eval mode and dtype
+        model.eval()
+        model.to("cuda", dtype=torch.bfloat16)
+        
+        return model, tokenizer, img_proc, ckpt_config, game_mapping, action_downsample_ratio
+    else:
+        # Assume monolithic checkpoint
+        return _load_monolithic_checkpoint(checkpoint_path)
 
 class InferenceSession:
     """Manages state for a single inference session."""
@@ -120,9 +157,9 @@ class InferenceSession:
         self.action_buffer = deque(maxlen=self.max_buffer_size)
 
     @classmethod
-    def from_ckpt(cls, checkpoint_path: str, old_layout=False, cfg_scale=1.0, context_length=None):
+    def from_ckpt(cls, checkpoint_path: str, base_model_path: str = None, old_layout=False, cfg_scale=1.0, context_length=None):
         """Create an InferenceSession from a checkpoint."""
-        model, tokenizer, img_proc, ckpt_config, game_mapping, action_downsample_ratio = load_model(checkpoint_path)
+        model, tokenizer, img_proc, ckpt_config, game_mapping, action_downsample_ratio = load_model(checkpoint_path, base_model_path)
 
         if game_mapping is not None:
             # Ask user to pick a game from the list

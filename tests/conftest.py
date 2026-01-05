@@ -53,7 +53,13 @@ mock_torch.randn = lambda *args, **kwargs: MockTensor()
 mock_torch.zeros = lambda *args, **kwargs: MockTensor()
 mock_torch.ones = lambda *args, **kwargs: MockTensor()
 mock_torch.cat = lambda *args, **kwargs: MockTensor()
-mock_torch.load = lambda *args, **kwargs: {"ckpt_config": {}, "model": {}}
+mock_torch.load = lambda *args, **kwargs: {
+    "ckpt_config": {
+        "model_cfg": {"model_type": "nitrogen", "vision_encoder_name": "google/siglip-large-patch16-256"},
+        "tokenizer_cfg": {"training": False}
+    }, 
+    "model": {}
+}
 mock_torch.bfloat16 = "bfloat16"
 mock_torch.bool = "bool"
 sys.modules['torch'] = mock_torch
@@ -73,6 +79,7 @@ sys.modules['polars'] = MagicMock()
 sys.modules['cv2'] = MagicMock()
 sys.modules['PIL'] = MagicMock()
 sys.modules['zmq'] = MagicMock()
+sys.modules['peft'] = MagicMock()
 
 # --- Mocking nitrogen specific internals that might be hard to load ---
 
@@ -109,11 +116,19 @@ class MockCkptConfig(MagicMock): # Pydantic model mocks are tricky, using MagicM
      def __init__(self, **kwargs):
         super().__init__(**kwargs)
         for k, v in kwargs.items():
+            if k == 'model_cfg' and isinstance(v, dict):
+                v = MockNitroGenConfig(**v)
+            if k == 'tokenizer_cfg' and isinstance(v, dict):
+                v = MockTokenizerConfig(**v)
             setattr(self, k, v)
      
      @staticmethod
      def model_validate(obj):
          return MockCkptConfig(**obj) if isinstance(obj, dict) else obj
+         
+     def model_dump(self, *args, **kwargs):
+         # Return a dict representation of the mock attributes
+         return {k: v for k, v in self.__dict__.items() if not k.startswith('_') and not callable(v)}
 
 class MockModalityConfig(MagicMock):
     def __init__(self, **kwargs):

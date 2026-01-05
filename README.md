@@ -20,6 +20,7 @@ This project dockerizes the original NitroGen implementation and extends it with
 *   **Dockerized**: Zero-dependency deployment on the host. Handles CUDA drivers and environment setup automatically.
 *   **Auto-Healing**: Automatically downloads the model weights (`ng.pt`) on the first run if they are missing.
 *   **Persistent Caching**: Uses a local volume for models to avoid re-downloading.
+*   **LoRA Support**: Use custom fine-tuned LoRA adapters with auto-merging capabilities.
 
 ---
 
@@ -131,6 +132,15 @@ docker-compose run --service-ports nitrogen-server --debug
 3. `*_3_processed.png`: The preprocessed image (resized/padded) sent to the model.
 4. `*_4_response.json`: The model's prediction response.
 
+
+**Run with LoRA Adapter:**
+To use a different model (like a LoRA adapter) with Docker, use `docker-compose run` to override the start command arguments:
+
+```bash
+# Ensure your checkpoint is in the `models/` directory (e.g. models/checkpoints/final_model)
+docker-compose run --service-ports nitrogen-server models/checkpoints/final_model --base-model models/nvidia/NitroGen/ng.pt
+```
+
 ---
 
 ## 🛠 Manual Installation (Development)
@@ -139,7 +149,7 @@ If you prefer to run the server without Docker (e.g., for development):
 
 ```bash
 # 1. Install dependencies
-pip install -e .[serve]
+pip install -e .[serve] peft
 pip install "huggingface_hub[cli]"
 
 # 2. Download Model
@@ -148,6 +158,10 @@ huggingface-cli download nvidia/NitroGen ng.pt --local-dir models/nvidia/NitroGe
 
 # 3. Run Server
 python scripts/serve.py models/nvidia/NitroGen/ng.pt [--debug]
+
+# 4. Run with LoRA Adapter
+# Point to the LoRA directory. Ensure the base model is also available.
+python scripts/serve.py models/checkpoints/final_model --base-model models/nvidia/NitroGen/ng.pt
 ```
 
 ## 📂 Project Structure

@@ -27,13 +27,20 @@ else
 fi
 
 # Pass specific arguments to serve.py
-# If no arguments provided, use defaults but always pass the checkpoint
+# Check arguments passed to the script
 if [ $# -eq 0 ]; then
     echo "Starting server with default configuration..."
     exec python scripts/serve.py "$MODEL_FILE"
 else
-    # If arguments are provided, pass them to serve.py along with the model file.
-    
-    echo "Starting server with arguments: $@"
-    exec python scripts/serve.py "$MODEL_FILE" "$@"
+    # Check if the first argument starts with "-" (flag)
+    # If it is a flag, we assume the user wants to use the default model and append flags.
+    if [[ "$1" == -* ]]; then
+        echo "Starting server with default model and flags: $@"
+        exec python scripts/serve.py "$MODEL_FILE" "$@"
+    else
+        # If the first argument does NOT start with "-", we assume it is a custom model path.
+        # In this case, we pass all arguments directly to serve.py without injecting the default model.
+        echo "Starting server with custom arguments: $@"
+        exec python scripts/serve.py "$@"
+    fi
 fi

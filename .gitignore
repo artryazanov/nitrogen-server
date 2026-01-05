@@ -5,3 +5,6 @@ models/
 venv/
 .env
 debug/
+nitrogen.egg-info/
+.hf_cache/
+build/

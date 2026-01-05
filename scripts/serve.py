@@ -376,6 +376,7 @@ def run_tcp_server(session, port, debug_mode=False, debug_dir="debug"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("ckpt", type=str)
+    parser.add_argument("--base-model", type=str, default="models/nvidia/NitroGen/ng.pt", help="Path to base model (required for LoRA adapters)")
     parser.add_argument("--zmq-port", type=int, default=5555, help="Port for ZeroMQ server")
     parser.add_argument("--tcp-port", type=int, default=5556, help="Port for Simple TCP server")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode to save images and jsons")
@@ -383,7 +384,7 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
 
-    session = InferenceSession.from_ckpt(args.ckpt)
+    session = InferenceSession.from_ckpt(args.ckpt, base_model_path=args.base_model)
 
     # Start TCP server in a daemon thread
     tcp_thread = threading.Thread(target=run_tcp_server, args=(session, args.tcp_port, args.debug, args.debug_dir), daemon=True)
